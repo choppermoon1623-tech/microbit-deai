@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>micro:bitとの出会い</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f8f2; --panel:#ffffff; --panel-bd:#dfe3d6;
+    --ink:#1f2633; --sub:#4a5262;
+    --sen:#1f63b5; --senLite:#dde9f8;   /* センサ（入力） */
+    --cpu:#6b3fb0; --cpuLite:#ece3fa;   /* コンピュータ（判断） */
+    --act:#c4541a; --actLite:#fbe3d4;   /* アクチュエータ（動作） */
+    --pcb:#1d7f47; --pcbLite:#d6f0e0;   /* 拡張ボード */
+    --warn:#b8261b; --warnLite:#fbdcd8;
+    --R:#e0261b; --G:#16a34a; --B:#2563eb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;background:#dfe3d6;color:var(--ink);overflow:hidden;}
+  body{font-family:"Zen Maru Gothic","BIZ UDGothic","Hiragino Maru Gothic ProN",system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  button{font-family:inherit;cursor:pointer;}
+
+  #viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
+  #stage{width:1600px;height:900px;position:relative;flex:none;transform-origin:center center;overflow:hidden;box-shadow:0 10px 40px rgba(30,50,20,.18);}
+  .slide{position:absolute;inset:0;padding:52px 80px 70px;display:flex;flex-direction:column;
+    background:radial-gradient(1000px 600px at 95% -10%,rgba(29,127,71,.08),transparent 60%),
+               radial-gradient(900px 600px at -10% 110%,rgba(31,99,181,.08),transparent 60%),var(--bg);
+    opacity:0;visibility:hidden;transition:opacity .45s ease,visibility .45s;}
+  .slide.active{opacity:1;visibility:visible;}
+  .slide.active .pop{animation:pop .6s cubic-bezier(.2,1.3,.4,1) both;}
+  .slide.active .pop:nth-child(2){animation-delay:.08s}
+  .slide.active .pop:nth-child(3){animation-delay:.16s}
+  .slide.active .pop:nth-child(4){animation-delay:.24s}
+  @keyframes pop{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;}}
+
+  .tag{font-weight:900;font-size:26px;letter-spacing:.12em;color:#fff;background:var(--pcb);
+    display:inline-block;padding:6px 22px;border-radius:999px;align-self:flex-start;}
+  .tag.S{background:var(--sen);} .tag.C{background:var(--cpu);} .tag.A{background:var(--act);} .tag.W{background:var(--warn);}
+  h1{font-size:96px;font-weight:900;line-height:1.12;}
+  h2{font-size:56px;font-weight:900;line-height:1.2;margin:10px 0 22px;}
+  h3{font-size:40px;font-weight:900;line-height:1.3;}
+  p,li{font-size:36px;font-weight:700;line-height:1.5;}
+  .sub{color:var(--sub);}
+  .cS{color:var(--sen)} .cC{color:var(--cpu)} .cA{color:var(--act)} .cP{color:var(--pcb)} .cW{color:var(--warn)}
+  .cR{color:var(--R)} .cG{color:var(--G)} .cB{color:var(--B)}
+  .mark{background:linear-gradient(transparent 58%,#ffd96b 58%);padding:0 4px;}
+
+  .row{display:flex;gap:44px;align-items:center;flex:1;min-height:0;}
+  .col{flex:1;min-width:0;}
+  .illus{border-radius:28px;overflow:hidden;border:3px solid #fff;box-shadow:0 18px 44px rgba(30,50,20,.20);background:#fefaee;}
+  .illus img{display:block;width:100%;height:auto;}
+  .illus.lab{position:relative;}
+  .card{background:var(--panel);border:2px solid var(--panel-bd);border-radius:26px;padding:22px 30px;box-shadow:0 6px 18px rgba(30,50,20,.06);}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .icon{font-size:64px;line-height:1;}
+  .kw{display:inline-block;font-weight:900;border-radius:14px;padding:0 14px;}
+  .kw.S{background:var(--senLite);color:var(--sen)} .kw.C{background:var(--cpuLite);color:var(--cpu)}
+  .kw.A{background:var(--actLite);color:var(--act)} .kw.P{background:var(--pcbLite);color:var(--pcb)}
+  .bS{border-top:12px solid var(--sen)} .bC{border-top:12px solid var(--cpu)} .bA{border-top:12px solid var(--act)} .bP{border-top:12px solid var(--pcb)}
+  .ws{position:absolute;right:80px;top:52px;font-size:26px;font-weight:900;color:var(--pcb);background:var(--pcbLite);padding:6px 20px;border-radius:14px;}
+  .test{display:inline-block;font-size:24px;font-weight:900;color:#fff;background:var(--warn);border-radius:10px;padding:2px 12px;vertical-align:middle;letter-spacing:.05em;}
+
+  .step{opacity:0;transform:translateY(16px);transition:opacity .4s,transform .4s;}
+  .step.shown{opacity:1;transform:none;}
+
+  #ui{position:fixed;left:0;right:0;bottom:0;height:6px;background:rgba(0,0,0,.06);z-index:10;}
+  #bar{height:100%;width:0;background:linear-gradient(90deg,var(--sen),var(--cpu),var(--act));transition:width .4s;}
+  .nav{position:fixed;bottom:16px;z-index:11;border:none;width:54px;height:54px;border-radius:50%;
+    background:rgba(31,38,51,.10);color:var(--ink);font-size:24px;font-weight:900;opacity:.6;transition:opacity .2s;}
+  .nav:hover{opacity:1;}
+  #prev{right:150px} #next{right:86px} #fs{right:22px;font-size:20px;}
+  #count{position:fixed;left:24px;bottom:22px;z-index:11;font-size:18px;font-weight:900;color:var(--sub);letter-spacing:.1em;}
+
+  /* 写真へのラベル */
+  .lbl{position:absolute;transform:translate(-50%,-50%);background:rgba(255,255,255,.95);border:3px solid var(--ink);border-radius:14px;padding:2px 14px;font-size:28px;font-weight:900;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.2);}
+  .ring{position:absolute;border:6px solid #ffd400;border-radius:18px;box-shadow:0 0 0 4px rgba(0,0,0,.35),0 0 24px rgba(255,212,0,.9);}
+
+  /* 流れ図 */
+  .flow{display:flex;align-items:stretch;gap:0;}
+  .flow .f{flex:1;background:#fff;border:3px solid var(--panel-bd);border-radius:24px;padding:18px 14px;text-align:center;}
+  .flow .f h3{font-size:44px;}
+  .flow .f p{font-size:30px;line-height:1.4;}
+  .flow .arr{display:flex;align-items:center;font-size:52px;color:var(--sub);padding:0 10px;font-weight:900;}
+  .num{display:inline-flex;width:50px;height:50px;border-radius:50%;color:#fff;background:var(--pcb);font-size:30px;font-weight:900;align-items:center;justify-content:center;flex:none;}
+  .steps{display:flex;flex-direction:column;gap:14px;}
+  .steps .s{display:flex;gap:18px;align-items:center;background:#fff;border:2px solid var(--panel-bd);border-radius:20px;padding:12px 22px;}
+  .steps .s p{font-size:32px;line-height:1.35;}
+
+  /* MakeCode風ブロック */
+  .blk{display:inline-block;color:#fff;font-size:32px;font-weight:900;border-radius:10px;padding:10px 22px;line-height:1.3;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);}
+  .blk .v{display:inline-block;background:#fff;color:var(--ink);border-radius:999px;padding:0 16px;margin:0 6px;}
+  .blk.in{background:#d400d4;} .blk.pin{background:#a5280e;} .blk.bas{background:#1e90ff;}
+  .blkwrap{display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
+  .blkwrap .inner{margin-left:44px;display:flex;flex-direction:column;gap:6px;}
+
+  /* 3択クイズ */
+  .opts{display:flex;flex-direction:column;gap:12px;}
+  .opt{border:3px solid var(--panel-bd);background:#fff;color:var(--ink);border-radius:18px;padding:10px 22px;font-size:30px;font-weight:900;text-align:left;}
+  .opt:hover{border-color:var(--sen);}
+  .opt.ok{background:var(--pcbLite);border-color:var(--pcb);color:var(--pcb);}
+  .opt.ok::before{content:"⭕ ";}
+  .opt.ng{background:var(--warnLite);border-color:var(--warn);color:var(--warn);opacity:.75;}
+  .opt.ng::before{content:"✕ ";}
+  .q{font-size:32px;font-weight:900;margin-bottom:10px;line-height:1.35;}
+  .ansbox{background:#fff;border:3px solid var(--pcb);border-radius:22px;padding:14px 24px;font-size:32px;font-weight:900;line-height:1.45;}
+
+  /* 光の三原色 */
+  .mix{position:relative;width:520px;height:480px;background:#0d0f14;border-radius:28px;flex:none;overflow:hidden;}
+  .mix .c{position:absolute;width:260px;height:260px;border-radius:50%;mix-blend-mode:screen;transition:opacity .3s;}
+  .mix .c.off{opacity:0;}
+  .mix .r{background:#ff0000;left:130px;top:60px;} .mix .g{background:#00ff00;left:60px;top:180px;} .mix .b{background:#0000ff;left:200px;top:180px;}
+  .tg{border:none;border-radius:16px;padding:10px 22px;font-size:30px;font-weight:900;color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.25);}
+  .tg.r{background:var(--R)} .tg.g{background:var(--G)} .tg.b{background:var(--B)}
+  .tg.off{opacity:.35;}
+  .sw{display:inline-block;width:40px;height:40px;border-radius:10px;vertical-align:middle;border:2px solid rgba(0,0,0,.2);margin-right:10px;}
+  table.t{width:100%;border-collapse:separate;border-spacing:0 10px;table-layout:fixed;}
+  table.t th{font-size:28px;font-weight:900;color:var(--sub);text-align:center;padding:0 10px;}
+  table.t td{background:#fff;font-size:32px;font-weight:900;padding:12px 16px;text-align:center;border-top:2px solid var(--panel-bd);border-bottom:2px solid var(--panel-bd);}
+  table.t td:first-child{border-left:2px solid var(--panel-bd);border-radius:18px 0 0 18px;text-align:left;}
+  table.t td:last-child{border-right:2px solid var(--panel-bd);border-radius:0 18px 18px 0;}
+  .btn{border:none;border-radius:20px;padding:12px 28px;font-size:30px;font-weight:900;background:var(--pcb);color:#fff;box-shadow:0 4px 0 #0f5a30;}
+  .btn:active{transform:translateY(3px);box-shadow:none;}
+  .url{font-family:Consolas,monospace;font-size:28px;font-weight:700;background:#eef1ea;border-radius:10px;padding:4px 12px;word-break:break-all;}
+  .qlist{display:flex;flex-direction:column;gap:11px;}
+  .qr{display:flex;gap:18px;align-items:center;background:#fff;border:2px solid var(--panel-bd);border-radius:16px;padding:7px 22px;font-size:32px;font-weight:700;}
+  .qn{flex:none;background:var(--warn);color:#fff;border-radius:10px;padding:0 12px;font-weight:900;font-size:28px;}
+  .qa{display:inline-block;min-width:110px;text-align:center;border-bottom:4px solid var(--warn);font-weight:900;margin:0 8px;}
+  .qa.step{opacity:1;transform:none;color:transparent;}
+  .qa.step.shown{color:var(--warn);}
+</style>
+</head>
+<body>
+<!-- 50分の目安：導入8分(1-4)／拡張ボードとGrove 8分(5-9)／実習① 振動モータ12分(10-13)／実習② 3色LED13分(14-17)／片付け2分(18)／確認テスト・まとめ・ふりかえり7分(19-21) -->
+<div id="viewport"><div id="stage">
+
+<!-- 01 タイトル -->
+<section class="slide" data-title="タイトル">
+  <div class="row" style="gap:40px;">
+    <div class="col" style="flex:.92;">
+      <span class="tag pop">計測・制御の技術</span>
+      <p class="sub pop" style="font-size:32px;margin-top:22px;">技術・家庭科〔技術分野〕3年</p>
+      <h1 class="pop" style="font-size:80px;margin:14px 0 24px;"><span class="cP">micro:bit</span><br>との出会い</h1>
+      <p class="pop" style="font-size:40px;">拡張ボードにつないで<br><span class="mark">ブルブル</span>させて、<span class="mark">光らせよう</span></p>
+    </div>
+    <div class="col illus pop" style="flex:1.08;"><img src="img/hero.jpg" alt="拡張ボードに差したマイコンから、振動モータと光るLEDへケーブルがのびている"></div>
+  </div>
+</section>
+
+<!-- 02 ゴール -->
+<section class="slide" data-title="きょうのゴール">
+  <span class="tag">GOAL</span>
+  <h2>きょうのゴール 🎯</h2>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:26px;padding-bottom:30px;">
+    <div class="card step" style="padding:26px 40px;"><p style="font-size:42px;">① 計測・制御は <span class="kw S">センサ</span> → <span class="kw C">コンピュータ</span> → <span class="kw A">アクチュエータ</span><br>　の順に動くことがわかる</p></div>
+    <div class="card step" style="padding:26px 40px;"><p style="font-size:42px;">② <span class="kw P">拡張ボード</span>と<span class="mark">Groveケーブル</span>で、装置をつなげる</p></div>
+    <div class="card step" style="padding:26px 40px;"><p style="font-size:42px;">③ プログラムで<span class="mark">振動モータ</span>と<span class="mark">3色LED</span>を動かせる</p></div>
+  </div>
+</section>
+
+<!-- 03 自動ドア -->
+<section class="slide" data-title="自動ドアのしくみ">
+  <span class="tag">考えよう</span>
+  <span class="ws">ワークシート p.2</span>
+  <h2>自動ドアは、どうやって<span class="mark">人に気づく</span>？</h2>
+  <div class="row" style="align-items:flex-start;">
+    <div class="col illus" style="flex:1.2;"><img src="img/autodoor.jpg" alt="自動ドアの上のセンサが人を見つけ、ドアが開く"></div>
+    <div class="col" style="flex:.8;display:flex;flex-direction:column;gap:18px;">
+      <div class="card bS step" style="padding:16px 26px;"><p style="font-size:32px;"><b class="cS">① 見つける</b><br>ドアの上の<b>センサ</b>が<br>人が近づいたことを感じる</p></div>
+      <div class="card bC step" style="padding:16px 26px;"><p style="font-size:32px;"><b class="cC">② 判断する</b><br><b>コンピュータ</b>が<br>「開けよう」と決める</p></div>
+      <div class="card bA step" style="padding:16px 26px;"><p style="font-size:32px;"><b class="cA">③ 動かす</b><br><b>モータ</b>がドアを開ける</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 計測・制御のしくみ -->
+<section class="slide" data-title="計測・制御のしくみ">
+  <span class="tag">しくみ</span>
+  <span class="ws">ワークシート p.2</span>
+  <h2>計測・制御のしくみ <span class="test">テストに出る</span></h2>
+  <div class="flow" style="margin:6px 0 26px;">
+    <div class="f bS"><div class="icon">👀</div><h3 class="cS">センサ</h3><p>周りのようすを<br><b>はかる</b>（計測）<br><span class="sub">人感・温度・明るさ</span></p></div>
+    <div class="arr">→</div>
+    <div class="f bC"><div class="icon">🧠</div><h3 class="cC">コンピュータ</h3><p>プログラムどおりに<br><b>判断する</b><br><span class="sub">micro:bit</span></p></div>
+    <div class="arr">→</div>
+    <div class="f bA"><div class="icon">💪</div><h3 class="cA">アクチュエータ</h3><p>命令を受けて<br><b>動く・光る・鳴る</b><br><span class="sub">モータ・LED・ブザー</span></p></div>
+  </div>
+  <div class="card step" style="border-left:12px solid var(--pcb);padding:20px 34px;">
+    <p style="font-size:36px;"><b>コンピュータ</b>と<b>センサ・アクチュエータ</b>の間で、信号を<b>つなぎ・変換する</b><br>部分を<span class="kw P">インタフェース</span>という。きょうの<b class="cP">拡張ボード</b>もその仲間</p>
+  </div>
+</section>
+
+<!-- 05 micro:bit 本体 -->
+<section class="slide" data-title="micro:bit本体でできること">
+  <span class="tag C">コンピュータ</span>
+  <h2>micro:bit だけでも、こんなことができる</h2>
+  <div class="row" style="align-items:stretch;">
+    <div class="col card" style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:30px 40px;">
+      <h3 class="cS" style="margin-bottom:10px;">中にあるセンサ</h3>
+      <p style="font-size:38px;line-height:1.75;">🔘 A・Bボタン<br>📐 かたむき・ゆれ（加速度）<br>☀️ 明るさ　🌡 温度</p>
+      <h3 class="cA" style="margin:22px 0 10px;">中にあるアクチュエータ</h3>
+      <p style="font-size:38px;line-height:1.75;">🔴 5×5のLED表示<br>🔊 スピーカー（V2）</p>
+    </div>
+    <div class="col card step" style="flex:1;background:#fffaf0;border-color:#e8d7b0;display:flex;flex-direction:column;justify-content:center;">
+      <p style="font-size:38px;line-height:1.6;">でも…<br>🌱 土の水分をはかりたい<br>🚪 人が来たら知らせたい<br>💨 風を送りたい</p>
+      <p style="font-size:38px;line-height:1.5;margin-top:16px;">→ <span class="mark">外の装置</span>をつなぐ必要がある！</p>
+    </div>
+  </div>
+</section>
+
+<!-- 06 拡張ボード -->
+<section class="slide" data-title="拡張ボード">
+  <span class="tag">拡張ボード</span>
+  <span class="ws">ワークシート p.3</span>
+  <h2>拡張ボード ＝ micro:bit の<span class="mark">「つなぐ口」</span>をふやす板</h2>
+  <div class="illus lab" style="width:1240px;align-self:center;">
+    <img src="img/p-board.jpg" alt="拡張ボードの写真。上にmicro:bitを差すすきま、下に白いGroveコネクタが4つ、右に黒い端子">
+    <div class="ring" style="left:18%;top:2%;width:58%;height:52%;border-color:#7fd3ff;box-shadow:0 0 0 4px rgba(0,0,0,.35);"></div>
+    <span class="lbl" style="left:47%;top:20%;">① micro:bit を差しこむ</span>
+    <div class="ring" style="left:19%;top:72%;width:57%;height:22%;"></div>
+    <span class="lbl" style="left:47%;top:64%;">② Groveコネクタ（白・4か所）</span>
+    <div class="ring" style="left:77%;top:50%;width:21%;height:15%;border-color:#ff8a7a;box-shadow:0 0 0 4px rgba(0,0,0,.35);"></div>
+    <span class="lbl" style="left:87%;top:73%;">③ LEDの端子</span>
+  </div>
+  <p class="sub" style="font-size:28px;text-align:center;margin-top:16px;">micro:bit の下の金色の端子は小さくて、そのままでは線をつなぎにくい → 拡張ボードが<b>端子を引き出して</b>くれる</p>
+</section>
+
+<!-- 07 なぜGrove -->
+<section class="slide" data-title="なぜGroveケーブル">
+  <span class="tag">Grove</span>
+  <h2>なぜ <span class="cP">Groveケーブル</span> を使うの？</h2>
+  <div class="illus" style="height:420px;align-self:center;"><img src="img/grove-compare.jpg" alt="左は細い線がからまってごちゃごちゃ、右はケーブル1本でカチッとすっきり" style="height:100%;width:auto;"></div>
+  <div class="grid3" style="margin-top:24px;">
+    <div class="card step" style="text-align:center;padding:14px;"><p style="font-size:34px;">🔌 <b>差すだけ</b><br><span class="sub" style="font-size:28px;">はんだ付け・配線いらず</span></p></div>
+    <div class="card step" style="text-align:center;padding:14px;"><p style="font-size:34px;">🧩 <b>向きが決まっている</b><br><span class="sub" style="font-size:28px;">逆に差さらない＝まちがえにくい</span></p></div>
+    <div class="card step" style="text-align:center;padding:14px;"><p style="font-size:34px;">🔁 <b>つけかえ自由</b><br><span class="sub" style="font-size:28px;">センサも装置も同じ形</span></p></div>
+  </div>
+</section>
+
+<!-- 08 4本の線 -->
+<section class="slide" data-title="Groveケーブルの4本の線">
+  <span class="tag">Grove</span>
+  <span class="ws">ワークシート p.3</span>
+  <h2>Groveケーブルの<span class="mark">4本の線</span> <span class="test">テストに出る</span></h2>
+  <div class="row" style="align-items:center;gap:50px;">
+    <div class="illus" style="flex:none;height:620px;"><img src="img/p-cable.jpg" alt="黒・赤・白・黄の4本の線のGroveケーブル" style="height:100%;width:auto;"></div>
+    <div class="col">
+      <table class="t" style="margin-bottom:10px;">
+        <colgroup><col style="width:30%"><col style="width:36%"><col style="width:34%"></colgroup>
+        <tr><th colspan="3" style="text-align:left;color:var(--pcb);font-size:30px;">今回使う「P3-P0」コネクタの場合</th></tr>
+        <tr><th>線の色</th><th>ボードの印字</th><th>役わり</th></tr>
+        <tr><td><span class="sw" style="background:#111"></span>黒</td><td>GND</td><td>電源（−）</td></tr>
+        <tr><td><span class="sw" style="background:#e3342f"></span>赤</td><td>3V3</td><td>電源（＋3.3V）</td></tr>
+        <tr><td><span class="sw" style="background:#fff"></span>白</td><td>P3</td><td>信号</td></tr>
+        <tr><td><span class="sw" style="background:#ffc800"></span>黄</td><td><b>P0</b></td><td><b>信号</b></td></tr>
+      </table>
+      <div class="card step" style="border-left:12px solid var(--pcb);padding:16px 28px;"><p style="font-size:32px;"><b>電源の線2本</b>＋<b>信号の線2本</b>。信号の線は、はかった結果や<br>動きの指示を伝える。振動モータは黄色の<span class="mark">P0</span>で動かす</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 センサ・アクチュエータの仲間 -->
+<section class="slide" data-title="つなげる装置の仲間">
+  <span class="tag">これから使う装置</span>
+  <h2>Groveでつなげる装置の仲間（一部）</h2>
+  <div class="grid2" style="flex:1;">
+    <div class="card bS">
+      <h3 class="cS" style="margin-bottom:10px;">👀 センサ（はかる）</h3>
+      <p style="font-size:38px;line-height:1.9;">人感センサ　光距離センサ<br>土壌水分センサ　温度センサ<br>押しボタン　炎センサ　降雨センサ<br><span class="sub" style="font-size:28px;">ほか 20種類以上</span></p>
+    </div>
+    <div class="card bA">
+      <h3 class="cA" style="margin-bottom:10px;">💪 アクチュエータ（動かす）</h3>
+      <p style="font-size:38px;line-height:1.9;"><span class="mark">振動モータ</span>　<span class="mark">3色LED</span><br>サーボモータ　扇風機（DCモータ）<br>水中ポンプ　小さなディスプレイ<br><span class="sub" style="font-size:28px;">きょうは、マークの2つを動かす</span></p>
+    </div>
+  </div>
+  <p class="sub" style="font-size:28px;margin-top:18px;">参考：北海道教育大学 石川研究室「センサ・アクション装置の使い方」</p>
+</section>
+
+<!-- 10 実習① つなぐ -->
+<section class="slide" data-title="実習① 振動モータをつなぐ">
+  <span class="tag A">実習①</span>
+  <span class="ws">ワークシート p.4</span>
+  <h2>振動モータを <span class="mark">P3-P0</span> につなごう</h2>
+  <div class="row" style="align-items:center;gap:36px;">
+    <div class="illus" style="flex:none;height:600px;position:relative;"><img src="img/p-motor.jpg" alt="振動モータの基板。上に白いGroveコネクタ" style="height:100%;width:auto;">
+      <span class="lbl" style="left:50%;top:6%;">Grove</span><span class="lbl" style="left:50%;top:76%;">振動モータ</span></div>
+    <div class="col" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="illus lab" style="width:700px;"><img src="img/p-board.jpg" alt="拡張ボードの左はしのGroveコネクタ P3-P0">
+        <div class="ring" style="left:18.5%;top:70%;width:12.5%;height:26%;"></div>
+        <span class="lbl" style="left:24.7%;top:60%;">ここ！ P3-P0</span></div>
+      <div class="steps">
+        <div class="s"><span class="num">1</span><p><b class="cW">USBは抜いたまま</b>、ケーブルを<b>振動モータ</b>に差す</p></div>
+        <div class="s"><span class="num">2</span><p>もう片方を拡張ボードの<b>P3-P0</b>に「カチッ」</p></div>
+        <div class="s"><span class="num">3</span><p>つないだら<b>最後にUSB</b>でパソコンにつなぐ</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 実習① プログラム -->
+<section class="slide" data-title="実習① プログラム">
+  <span class="tag A">実習①</span>
+  <span class="ws">ワークシート p.4</span>
+  <h2>ボタンAで、1秒ブルブルさせよう</h2>
+  <div class="row" style="align-items:flex-start;gap:40px;">
+    <div class="col card" style="flex:1.05;padding:30px;">
+      <p class="sub" style="font-size:28px;margin-bottom:14px;">MakeCode（makecode.microbit.org）で組む</p>
+      <div class="blkwrap">
+        <span class="blk in">ボタン <span class="v">A ▾</span> が押されたとき</span>
+        <div class="inner">
+          <span class="blk pin">デジタルで出力する 端子 <span class="v">P0 ▾</span> 値 <span class="v">1</span></span>
+          <span class="blk bas">一時停止（ミリ秒） <span class="v">1000</span></span>
+          <span class="blk pin">デジタルで出力する 端子 <span class="v">P0 ▾</span> 値 <span class="v">0</span></span>
+        </div>
+      </div>
+      <p style="font-size:30px;margin-top:18px;">📂「デジタルで出力する」は<br><b class="cW">高度なブロック → 入出力端子</b> の中</p>
+    </div>
+    <div class="col" style="flex:.95;display:flex;flex-direction:column;gap:16px;">
+      <div class="card bA step" style="padding:16px 26px;"><p style="font-size:33px;"><b>1</b> ＝ P0を<b>高い電圧</b>に → モータON<br><b>0</b> ＝ P0を<b>低い電圧</b>に → モータOFF</p></div>
+      <div class="card step" style="padding:16px 26px;"><p style="font-size:30px;">⬇ <b>ダウンロード</b>して micro:bit に書きこむ → ボタンAを押す</p></div>
+      <div class="card step" style="background:#fffaf0;border-color:#e8d7b0;padding:16px 26px;"><p style="font-size:30px;">⭐ <b>チャレンジ</b><br>ボタンBで「<b>ブッ・ブッ</b>」と<br>短く2回ふるえさせよう</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 なぜブルブル -->
+<section class="slide" data-title="振動モータのしくみ">
+  <span class="tag A">しくみ</span>
+  <span class="ws">ワークシート p.5</span>
+  <h2>どうして<span class="mark">ブルブル</span>するの？</h2>
+  <div class="row" style="align-items:center;">
+    <div class="col" style="flex:1.1;"><div class="illus"><img src="img/vib-inside.jpg" alt="コイン形振動モータの中で、かたよったおもりが回っている断面図"></div><p class="sub" style="font-size:26px;text-align:center;margin-top:10px;">しくみを表した模式図</p></div>
+    <div class="col" style="flex:.9;display:flex;flex-direction:column;gap:18px;">
+      <div class="card bA" style="padding:18px 26px;"><p style="font-size:33px;">中で<b class="cA">かたよったおもり</b>が<br>回るので、全体がゆれる</p></div>
+      <div class="card step" style="padding:18px 26px;"><p style="font-size:31px;">micro:bit の端子から出せる<br>電流は<b>小さい</b> → 基板の<b>トランジスタ</b><br>（FET）がスイッチになり、電源から<br><b>大きな電流</b>をモータに流す</p></div>
+      <div class="card step" style="padding:18px 26px;border-left:10px solid var(--pcb);"><p style="font-size:30px;">信号を受けて動かす部分も<br><span class="kw P">インタフェース</span>の役目</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 どこで使う -->
+<section class="slide" data-title="振動で知らせる">
+  <span class="tag A">考えよう</span>
+  <span class="ws">ワークシート p.5</span>
+  <h2>音ではなく<span class="mark">振動</span>で知らせる、よさは？</h2>
+  <div class="row" style="align-items:flex-start;">
+    <div class="col illus" style="flex:1.1;"><img src="img/pager.jpg" alt="フードコートの呼び出しベルがふるえて、中学生が気づく"></div>
+    <div class="col" style="flex:.9;display:flex;flex-direction:column;gap:18px;">
+      <div class="card" style="padding:18px 26px;"><p style="font-size:32px;">📳 スマホのバイブ<br>🔔 フードコートの呼び出しベル<br>🎮 ゲームのコントローラ<br>⌚ 腕時計のアラーム</p></div>
+      <div class="card step" style="background:#fffaf0;border-color:#e8d7b0;padding:18px 26px;"><p class="sub" style="font-size:26px;">考えの例</p><p style="font-size:31px;">・<b>静かな場所</b>で迷惑をかけない<br>・<b>耳が聞こえにくい人</b>にも伝わる<br>・うるさい場所でも<b>体で</b>気づける</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 実習② LEDをつなぐ -->
+<section class="slide" data-title="実習② 3色LEDをつなぐ">
+  <span class="tag A">実習②</span>
+  <span class="ws">ワークシート p.6</span>
+  <h2>3色LEDを、右側の黒い端子に差そう</h2>
+  <div class="row" style="align-items:center;gap:36px;">
+    <div class="col" style="flex:1.15;">
+      <svg viewBox="0 0 760 560" style="width:100%;display:block;" role="img" aria-label="LEDの足のさし方。青はP13、緑はP14、いちばん長い足はGND、赤はBAT+をとばしてP15。P16は空ける">
+        <rect x="0" y="0" width="760" height="560" rx="28" fill="#ffffff" stroke="#dfe3d6" stroke-width="3"/>
+        <!-- LED 本体 -->
+        <rect x="248" y="60" width="196" height="40" rx="6" fill="#e9f1f7" stroke="#9fb3c4" stroke-width="3"/>
+        <path d="M262 60 v-6 a84 40 0 0 1 168 0 v6 z" fill="#f4f8fb" stroke="#9fb3c4" stroke-width="3"/>
+        <!-- 足：位置 B=280 G=320 GND=360 R=400 -->
+        <line x1="280" y1="100" x2="135" y2="340" stroke="#2563eb" stroke-width="9" stroke-linecap="round"/>
+        <line x1="320" y1="100" x2="235" y2="340" stroke="#16a34a" stroke-width="9" stroke-linecap="round"/>
+        <line x1="360" y1="100" x2="335" y2="340" stroke="#555" stroke-width="9" stroke-linecap="round"/>
+        <polyline points="400,100 400,200 535,250 535,340" fill="none" stroke="#e0261b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="200" y="168" font-size="30" font-weight="900" fill="#2563eb" text-anchor="end">青</text>
+        <text x="258" y="226" font-size="30" font-weight="900" fill="#16a34a" text-anchor="end">緑</text>
+        <text x="370" y="290" font-size="26" font-weight="900" fill="#333">長い足</text>
+        <text x="476" y="196" font-size="30" font-weight="900" fill="#e0261b">赤（曲げる）</text>
+        <!-- 端子 6ピン -->
+        <rect x="80" y="340" width="610" height="80" rx="10" fill="#1d1f23"/>
+        <g fill="#000" stroke="#555" stroke-width="2">
+          <rect x="115" y="360" width="40" height="40"/><rect x="215" y="360" width="40" height="40"/><rect x="315" y="360" width="40" height="40"/>
+          <rect x="415" y="360" width="40" height="40"/><rect x="515" y="360" width="40" height="40"/><rect x="615" y="360" width="40" height="40"/>
+        </g>
+        <g font-size="30" font-weight="900" text-anchor="middle">
+          <text x="135" y="465" fill="#2563eb">P13</text><text x="235" y="465" fill="#16a34a">P14</text><text x="335" y="465" fill="#333">GND</text>
+          <text x="435" y="465" fill="#b8261b">BAT+</text><text x="535" y="465" fill="#e0261b">P15</text><text x="635" y="465" fill="#999">P16</text>
+        </g>
+        <g stroke="#b8261b" stroke-width="7" stroke-linecap="round"><line x1="418" y1="482" x2="452" y2="516"/><line x1="452" y1="482" x2="418" y2="516"/></g>
+        <text x="435" y="548" font-size="30" font-weight="900" fill="#b8261b" text-anchor="middle">差さない</text>
+        <text x="635" y="512" font-size="28" font-weight="900" fill="#999" text-anchor="middle">空ける</text>
+      </svg>
+    </div>
+    <div class="col" style="flex:.85;display:flex;flex-direction:column;gap:14px;">
+      <div class="illus" style="position:relative;"><img src="img/p-led.jpg" alt="足が4本ある3色LED。2本目がいちばん長い"><span class="lbl" style="left:30%;top:18%;font-size:28px;">今回のLED：GND共通</span></div>
+      <div class="card" style="padding:12px 22px;border-left:10px solid var(--warn);"><p style="font-size:29px;"><b class="cW">USBを抜いて</b>から差す → 足どうしが<br>ふれていないか確認 → USBをつなぐ</p></div>
+      <div class="card" style="padding:12px 22px;"><p style="font-size:30px;">① <b>いちばん長い足</b> → <b>GND</b></p></div>
+      <div class="card" style="padding:12px 22px;"><p style="font-size:30px;">② 長い足の<b>1本だけの側</b>が<b class="cR">赤</b><br>　→ <b class="cW">BAT+をとばして</b>P15</p></div>
+      <div class="card" style="padding:12px 22px;"><p style="font-size:30px;">③ 残り2本 → <b class="cG">P14</b>・<b class="cB">P13</b></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 実習② アプリ -->
+<section class="slide" data-title="実習② アプリで光らせる">
+  <span class="tag A">実習②</span>
+  <span class="ws">ワークシート p.6</span>
+  <h2>アプリで、LEDの色をあやつろう</h2>
+  <p style="font-size:30px;margin:-6px 0 18px;">📎 <span class="url">choppermoon1623-tech.github.io/microbit-rgb/</span>　<span class="sub" style="font-size:28px;">（Chrome か Edge で開く）</span></p>
+  <div class="steps">
+    <div class="s"><span class="num">1</span><p>アプリのページ下「<b>micro:bit 側のプログラム</b>」をコピー</p></div>
+    <div class="s"><span class="num">2</span><p>MakeCode の <b>JavaScript</b> の中身を<b>全部置きかえて</b>貼る → <b>ダウンロード</b><br><span class="sub" style="font-size:28px;"><b>ハート</b>が出たらOK（振動モータのプログラムは上書きされる）</span></p></div>
+    <div class="s"><span class="num">3</span><p><b>MakeCode のタブを閉じる</b>（開いたままだと接続できない）</p></div>
+    <div class="s"><span class="num">4</span><p>「<b>micro:bit と接続</b>」→ 一覧から選んで「接続」</p></div>
+    <div class="s"><span class="num">5</span><p><b class="cR">赤</b>・<b class="cG">緑</b>・<b class="cB">青</b>のフェーダーを動かして、色を作る（0〜255）</p></div>
+  </div>
+  <p class="sub" style="font-size:28px;margin-top:14px;">色が逆になる…→ 長い足がGNDに入っているか確認。「アノードコモン」のチェックは<b>外したまま</b></p>
+</section>
+
+<!-- 16 光の三原色 -->
+<section class="slide" data-title="光の三原色">
+  <span class="tag">光の三原色</span>
+  <span class="ws">ワークシート p.6</span>
+  <h2>赤・緑・青を混ぜると、何色？ <span class="test">テストに出る</span></h2>
+  <div class="row" style="align-items:center;gap:50px;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:18px;">
+      <div class="mix" id="mix"><div class="c r"></div><div class="c g"></div><div class="c b"></div></div>
+      <div style="display:flex;gap:14px;"><button class="tg r" data-c="r" aria-pressed="true">赤：点灯</button><button class="tg g" data-c="g" aria-pressed="true">緑：点灯</button><button class="tg b" data-c="b" aria-pressed="true">青：点灯</button></div>
+    </div>
+    <div class="col">
+      <table class="t">
+        <colgroup><col style="width:58%"><col style="width:42%"></colgroup>
+        <tr><td><b class="cR">赤</b> ＋ <b class="cG">緑</b></td><td><span class="step"><span class="sw" style="background:#ffff00"></span>黄</span></td></tr>
+        <tr><td><b class="cG">緑</b> ＋ <b class="cB">青</b></td><td><span class="step"><span class="sw" style="background:#00ffff"></span>水色</span></td></tr>
+        <tr><td><b class="cB">青</b> ＋ <b class="cR">赤</b></td><td><span class="step"><span class="sw" style="background:#ff00ff"></span>赤むらさき</span></td></tr>
+        <tr><td>3つ全部</td><td><span class="step"><span class="sw" style="background:#fff"></span>白</span></td></tr>
+      </table>
+      <p class="sub" style="font-size:28px;margin-top:10px;">ボタンで光を消したり点けたりできる。実物のLEDは<br>色ごとに明るさがちがうので、数字で調整する</p>
+    </div>
+  </div>
+</section>
+
+<!-- 17 色づくり -->
+<section class="slide" data-title="色づくりチャレンジ">
+  <span class="tag A">チャレンジ</span>
+  <span class="ws">ワークシート p.6</span>
+  <h2>フェーダーの数字で、色を作ろう</h2>
+  <style>#ct td{padding:7px 16px;font-size:30px;} #ct{border-spacing:0 7px;}</style>
+  <div class="row" style="align-items:flex-start;gap:40px;">
+    <div class="col">
+      <table class="t" id="ct">
+        <colgroup><col style="width:40%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
+        <tr><th></th><th class="cR">赤</th><th class="cG">緑</th><th class="cB">青</th></tr>
+        <tr><td><span class="sw" style="background:#ffff00"></span>黄</td><td>255</td><td>255</td><td>0</td></tr>
+        <tr><td><span class="sw" style="background:#00ffff"></span>水色</td><td>?</td><td>?</td><td>?</td></tr>
+        <tr><td><span class="sw" style="background:#ff00ff"></span>赤むらさき</td><td>?</td><td>?</td><td>?</td></tr>
+        <tr><td><span class="sw" style="background:#fff"></span>白</td><td>?</td><td>?</td><td>?</td></tr>
+        <tr><td><span class="sw" style="background:#ff8c00"></span>⭐オレンジ</td><td>?</td><td>?</td><td>?</td></tr>
+        <tr><td>⭐自分の色</td><td>?</td><td>?</td><td>?</td></tr>
+      </table>
+    </div>
+    <div class="col" style="flex:.8;display:flex;flex-direction:column;gap:18px;">
+      <div class="card" style="padding:18px 26px;"><p style="font-size:32px;">数字が大きいほど<b>明るく</b>光る<br><span class="sub" style="font-size:27px;">0＝消える　255＝いちばん明るい</span></p></div>
+      <div class="card" style="background:#fffaf0;border-color:#e8d7b0;padding:18px 26px;"><p style="font-size:30px;">⭐ 発展：オレンジは黄に近い<br>→ <b class="cG">緑を少しへらす</b>と…？<br><span class="sub" style="font-size:27px;">うまくいった数字をワークシートに記録</span></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 片付け・安全 -->
+<section class="slide" data-title="あとかたづけと安全">
+  <span class="tag W">安全・あとかたづけ</span>
+  <h2>こわさない・けがをしない 4つの約束</h2>
+  <div class="grid2" style="flex:1;align-content:center;">
+    <div class="card" style="border-left:12px solid var(--warn);"><p style="font-size:33px;">✋ ケーブルは<b>コネクタをつまんで</b>抜く<br><span class="sub" style="font-size:27px;">線を引っぱると中で切れる</span></p></div>
+    <div class="card" style="border-left:12px solid var(--warn);"><p style="font-size:33px;">⚡ LEDの足を<b>BAT+に差さない</b><br><span class="sub" style="font-size:27px;">足どうしがふれないようにする</span></p></div>
+    <div class="card" style="border-left:12px solid var(--warn);"><p style="font-size:33px;">🔌 つなぎかえは<b>USBを抜いてから</b><br><span class="sub" style="font-size:27px;">電気が流れたまま差しかえない</span></p></div>
+    <div class="card" style="border-left:12px solid var(--warn);"><p style="font-size:33px;">📦 LEDは<b>足を曲げすぎず</b>袋にもどす<br><span class="sub" style="font-size:27px;">何度も曲げると足が折れる</span></p></div>
+  </div>
+</section>
+
+<!-- 19 確認テスト -->
+<section class="slide" data-title="確認テスト">
+  <span class="tag W">確認テスト</span>
+  <span class="ws">ワークシート p.7</span>
+  <h2>確認テスト <span class="sub" style="font-size:28px;margin-left:12px;">ワークシートp.7と同じ問題。クリックで答えが1つずつ出る</span></h2>
+  <div class="qlist">
+    <div class="qr"><span class="qn">Q1</span><span>周りのようすをはかる装置を<span class="qa step">センサ</span>という。</span></div>
+    <div class="qr"><span class="qn">Q2</span><span>命令を受けて動く・光る装置を<span class="qa step">アクチュエータ</span>という。</span></div>
+    <div class="qr"><span class="qn">Q3</span><span>計測・制御は センサ →<span class="qa step">コンピュータ</span>→ アクチュエータ の順に働く。</span></div>
+    <div class="qr"><span class="qn">Q4</span><span>Groveの電源の線は黒と<span class="qa step">赤</span>、信号の線は白と<span class="qa step">黄</span>。</span></div>
+    <div class="qr"><span class="qn">Q5</span><span>「デジタルで出力する」で、モータを止める値は<span class="qa step">0</span>。</span></div>
+    <div class="qr"><span class="qn">Q6</span><span>光の三原色：赤＋緑＝<span class="qa step">黄</span>、緑＋青＝<span class="qa step">水色</span>、全部＝<span class="qa step">白</span></span></div>
+    <div class="qr"><span class="qn">Q7</span><span>モータに大きな電流を流すため、<span class="qa step">トランジスタ</span>をスイッチに使う。</span></div>
+    <div class="qr"><span class="qn">Q8</span><span>今回のLEDのいちばん長い足は<span class="qa step">GND</span>に差す。</span></div>
+  </div>
+</section>
+
+<!-- 20 まとめ -->
+<section class="slide" data-title="まとめ">
+  <span class="tag">まとめ</span>
+  <h2>きょうわかったこと</h2>
+  <div class="flow" style="margin:20px 0 40px;">
+    <div class="f bS" style="padding:28px 14px;"><h3 class="cS">センサ</h3><p style="font-size:34px;">はかる</p></div><div class="arr">→</div>
+    <div class="f bC" style="padding:28px 14px;"><h3 class="cC">コンピュータ</h3><p style="font-size:34px;">判断する（micro:bit）</p></div><div class="arr">→</div>
+    <div class="f bA" style="padding:28px 14px;"><h3 class="cA">アクチュエータ</h3><p style="font-size:34px;">振動モータ・3色LED</p></div>
+  </div>
+  <div class="card" style="border-left:12px solid var(--pcb);padding:26px 38px;margin-bottom:30px;">
+    <p style="font-size:38px;">拡張ボード＋Groveケーブルなら、<span class="mark">合うコネクタにつなぎ</span>、<br>プログラムを変えて、いろいろな装置を組み合わせられる</p>
+  </div>
+  <div class="card step" style="background:#fffaf0;border-color:#e8d7b0;padding:22px 34px;">
+    <p style="font-size:36px;line-height:1.6;">🔭 次回から：<b>身近な困りごと</b>を見つけて、センサ＋アクチュエータで解決する<br><span class="sub" style="font-size:27px;">「計測・制御 逆引きシステム」で、使える装置をさがせる</span></p>
+  </div>
+</section>
+
+<!-- 21 ふりかえり -->
+<section class="slide" data-title="ふりかえり">
+  <span class="tag">ふりかえり</span>
+  <span class="ws">ワークシート p.8</span>
+  <h2>こんな装置があったら、だれが助かる？</h2>
+  <div class="row" style="align-items:stretch;">
+    <div class="col card" style="padding:30px 40px;display:flex;flex-direction:column;justify-content:center;">
+      <p style="font-size:38px;line-height:1.9;">① きょうできたことを<br>　◎・〇・△でふりかえる<br>② <b class="cS">センサ</b>＋<b class="cA">振動モータ</b>か<b class="cA">LED</b>で<br>　<span class="mark">あったら便利な装置</span>を考える</p>
+    </div>
+    <div class="col card step" style="background:#fffaf0;padding:30px 36px;display:flex;flex-direction:column;justify-content:center;">
+      <p class="sub" style="font-size:28px;">例</p>
+      <p style="font-size:40px;line-height:1.7;"><b class="cS">土壌水分センサ</b>で<br>土がかわいたら、<br><b class="cA">LEDを赤く</b>光らせる。<br>→ 水やりを忘れがちな<br>　<b>植物係</b>が助かる</p>
+    </div>
+  </div>
+</section>
+
+</div></div>
+
+<div id="ui"><div id="bar"></div></div>
+<div id="count"></div>
+<button class="nav" id="prev" aria-label="前へ">◀</button>
+<button class="nav" id="next" aria-label="次へ">▶</button>
+<button class="nav" id="fs" aria-label="全画面">⛶</button>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const slides = [...document.querySelectorAll('.slide')];
+  const stage = $('#stage');
+  let cur = 0;
+
+  function fit(){ stage.style.transform = `scale(${Math.min(innerWidth/1600, innerHeight/900)})`; }
+  addEventListener('resize', fit); fit();
+
+  function show(i, revealAll){
+    cur = Math.max(0, Math.min(slides.length-1, i));
+    slides.forEach((s,j) => s.classList.toggle('active', j===cur));
+    slides[cur].querySelectorAll('.step').forEach(e => e.classList.toggle('shown', !!revealAll));
+    if(!revealAll) slides[cur].querySelectorAll('.opt').forEach(x => x.classList.remove('ok','ng'));
+    else slides[cur].querySelectorAll('.opts').forEach(o => o.querySelectorAll('.opt').forEach(x => x.classList.toggle('ok', x.dataset.k===o.dataset.ans)));
+    $('#bar').style.width = ((cur+1)/slides.length*100)+'%';
+    $('#count').textContent = String(cur+1).padStart(2,'0')+' / '+slides.length;
+    history.replaceState(null,'','#'+(cur+1));
+  }
+  function next(){
+    const hidden = slides[cur].querySelector('.step:not(.shown)');
+    if(hidden) hidden.classList.add('shown'); else if(cur<slides.length-1) show(cur+1);
+  }
+  function prev(){ if(cur>0) show(cur-1, true); }
+
+  addEventListener('keydown', e => {
+    if(['ArrowRight','ArrowDown','PageDown',' ','Enter'].includes(e.key)){ e.preventDefault(); next(); }
+    else if(['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(e.key)){ e.preventDefault(); prev(); }
+    else if(e.key==='Home') show(0);
+    else if(e.key==='End') show(slides.length-1, true);
+    else if(e.key==='f'||e.key==='F') toggleFs();
+  });
+  $('#next').onclick = next; $('#prev').onclick = prev;
+  document.addEventListener('click', e => e.target.closest('button')?.blur());
+  function toggleFs(){ document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); }
+  $('#fs').onclick = toggleFs;
+  $('#viewport').addEventListener('click', e => {
+    if(e.target.closest('button,a,.mix')) return;
+    (e.clientX > innerWidth*0.3) ? next() : prev();
+  });
+  let sx=null;
+  addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive:true});
+  addEventListener('touchend', e => {
+    if(sx===null) return; const dx = e.changedTouches[0].clientX - sx; sx=null;
+    if(Math.abs(dx)>60) dx<0 ? next() : prev();
+  });
+
+  /* 3択クイズ */
+  document.querySelectorAll('.opts').forEach(o => {
+    o.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+      if(b.dataset.k===o.dataset.ans){
+        o.querySelectorAll('.opt').forEach(x => { x.classList.remove('ng'); x.classList.toggle('ok', x===b); });
+      } else b.classList.add('ng');
+    });
+  });
+
+  /* 光の三原色：ボタンで点けたり消したり */
+  document.querySelectorAll('.tg').forEach(b => b.onclick = () => {
+    const off = b.classList.toggle('off');
+    $('#mix .'+b.dataset.c).classList.toggle('off', off);
+    b.setAttribute('aria-pressed', String(!off));
+    b.textContent = b.textContent.split('：')[0] + (off ? '：消灯' : '：点灯');
+  });
+
+  const h = parseInt(location.hash.slice(1));
+  show(h>0 ? h-1 : 0, location.search.includes('all'));   // ?all で全表示（確認用）
+})();
+</script>
+</body>
+</html>
