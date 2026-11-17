@@ -3,4 +3,4 @@ micro:bit に拡張ボードをつけ、Groveケーブルで振動モータと3�
 
 公開ページ：https://choppermoon1623-tech.github.io/microbit-deai/
 →キー・クリックで進む／F で全画面。3色LEDの操作アプリ：https://choppermoon1623-tech.github.io/microbit-rgb/
-原本：Desktop\Work\02_スライド\microbit-deai（ワークシートは原本側）
+原本：Desktop\Work\02_スライド\技術\microbit-deai（ワークシートは原本側）
